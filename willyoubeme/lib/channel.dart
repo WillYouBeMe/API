@@ -1,10 +1,17 @@
+
+import 'package:aqueduct/aqueduct.dart';
+import 'package:aqueduct/managed_auth.dart';
 import 'package:willyoubeme/willyoubeme.dart';
+
+import 'model/user.dart';
 
 /// This type initializes an application.
 ///
 /// Override methods in this class to set up routes and initialize services like
 /// database connections. See http://aqueduct.io/docs/http/channel/.
-class WillyoubemeChannel extends ApplicationChannel {
+class WillYouBeMeChannel extends ApplicationChannel {
+  AuthServer authServer;
+  ManagedContext context;
   /// Initialize services in this method.
   ///
   /// Implement this method to initialize services, read values from [options]
@@ -13,7 +20,19 @@ class WillyoubemeChannel extends ApplicationChannel {
   /// This method is invoked prior to [entryPoint] being accessed.
   @override
   Future prepare() async {
-    logger.onRecord.listen((rec) => print("$rec ${rec.error ?? ""} ${rec.stackTrace ?? ""}"));
+    logger.onRecord.listen(
+            (rec) => print("$rec ${rec.error ?? ""} ${rec.stackTrace ?? ""}"));
+    final config = WillYouBeMeConfig(options.configurationFilePath);
+    final dataModel = ManagedDataModel.fromCurrentMirrorSystem();
+    final persistentStore = PostgreSQLPersistentStore.fromConnectionInfo(
+        config.database.username,
+        config.database.password,
+        config.database.host,
+        config.database.port,
+        config.database.databaseName);
+    context = ManagedContext(dataModel,persistentStore);
+    final delegate = ManagedAuthDelegate<User>(context,tokenLimit: 20);
+    authServer = AuthServer(delegate);
   }
 
   /// Construct the request channel.
@@ -26,14 +45,33 @@ class WillyoubemeChannel extends ApplicationChannel {
   Controller get entryPoint {
     final router = Router();
 
-    // Prefer to use `link` instead of `linkFunction`.
-    // See: https://aqueduct.io/docs/http/request_controller/
+    // Set up auth token route- this grants and refresh tokens
+    router.route("/auth/token").link(() => AuthController(authServer));
+
+    // Set up auth code route- this grants temporary access codes that can be exchanged for token
+    router.route("/auth/code").link(() =>  AuthCodeController(authServer));
+
+    // Set up protected route
+    /*router
+        .route("/projectAdmin/[:id]")
+        .link(() => Authorizer.bearer(authServer))
+        .link(() => AdminController(context));
+
     router
-      .route("/example")
-      .linkFunction((request) async {
-        return Response.ok({"key": "value"});
-      });
+        .route("/project/[:id]")
+        .link(() => ProjectController(context));
+
+    router
+        .route("/register")
+        .link(() => Authorizer.basic(authServer))
+        .link(() => RegisterController(context, authServer));*/
 
     return router;
   }
+}
+
+class WillYouBeMeConfig extends Configuration {
+  WillYouBeMeConfig(String path) : super.fromFile(File(path));
+
+  DatabaseConfiguration database;
 }

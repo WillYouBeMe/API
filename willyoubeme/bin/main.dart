@@ -1,7 +1,7 @@
 import 'package:willyoubeme/willyoubeme.dart';
 
 Future main() async {
-  final app = Application<WillyoubemeChannel>()
+  final app = Application<WillYouBeMeChannel>()
       ..options.configurationFilePath = "config.yaml"
       ..options.port = 8888;
 
