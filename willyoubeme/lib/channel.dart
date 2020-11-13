@@ -1,9 +1,11 @@
 
 import 'package:aqueduct/aqueduct.dart';
 import 'package:aqueduct/managed_auth.dart';
+import 'package:willyoubeme/controller/UserController.dart';
 import 'package:willyoubeme/willyoubeme.dart';
 
 import 'model/user.dart';
+
 
 /// This type initializes an application.
 ///
@@ -50,6 +52,10 @@ class WillYouBeMeChannel extends ApplicationChannel {
 
     // Set up auth code route- this grants temporary access codes that can be exchanged for token
     router.route("/auth/code").link(() =>  AuthCodeController(authServer));
+
+    router
+      .route("/user/[:id]")
+      .link(() => UserController(context));
 
     // Set up protected route
     /*router
